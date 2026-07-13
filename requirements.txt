@@ -1,0 +1,14 @@
+# Motor de conversión PDF -> PDF accesible con OCR.
+# Requisitos externos (ya instalados en esta máquina):
+#   - Tesseract OCR 5.x con idiomas spa + eng
+#   - Ghostscript 10.x
+ocrmypdf>=16.0
+pikepdf>=9.0
+pypdf>=5.0
+pdfplumber>=0.11
+
+# GUI (etapa 2):
+PySide6>=6.7
+
+# Desarrollo / tests:
+# pytest>=8.0

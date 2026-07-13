@@ -1,0 +1,29 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build / dist
+build/
+dist/
+*.egg-info/
+
+# Installer binaries (large files — download links in README)
+installer/deps/
+installer/Output/
+
+# Test artifacts
+tests/prueba_escaneada.pdf
+tests/salida/
+tests/salida2/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

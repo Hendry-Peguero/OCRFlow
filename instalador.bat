@@ -25,6 +25,19 @@ if errorlevel 1 (
 
 for /f "tokens=*" %%V in ('python --version 2^>^&1') do set PY_VER=%%V
 echo [OK] %PY_VER% detectado.
+
+rem Advertir si la version es 3.14+ (PySide6 aun no tiene wheel para ella)
+for /f "tokens=2 delims=." %%M in ('python -c "import sys; print(sys.version)" 2^>^&1') do set PY_MINOR=%%M
+for /f "tokens=1 delims=." %%N in ('python -c "import sys; print(sys.version_info.major)" 2^>^&1') do set PY_MAJOR=%%N
+if "%PY_MAJOR%"=="3" if %PY_MINOR% GEQ 14 (
+    echo.
+    echo [AVISO] Python 3.14+ detectado.
+    echo  PySide6 puede no tener wheel disponible para esta version.
+    echo  Si la instalacion falla, instala Python 3.13 desde:
+    echo    https://www.python.org/downloads/release/python-3130/
+    echo  y ejecuta este instalador de nuevo.
+    echo.
+)
 echo.
 
 rem -- 2. Crear entorno virtual ------------------------------------------

@@ -1,14 +1,7 @@
 """Conversión del PDF: OCR + metadatos de accesibilidad.
 
-La receta de OCR está tomada de los pipelines verificados del usuario
-(`procesar_sin_ocr.py` / `ftp_ocr_pipeline.py`), que procesaron el corpus real:
-
-    ocrmypdf --language spa --output-type pdfa --force-ocr --deskew  ent  sal
-
-Es deliberadamente simple y robusta: `--force-ocr` rasteriza cada página y le
-aplica OCR SIEMPRE, sin intentar adivinar qué necesita el documento. Así nunca
-se salta un archivo ni deja páginas sin capa de texto. La salida es PDF/A
-(archivo a largo plazo) con enderezado de escaneos torcidos (deskew).
+Usa ocrmypdf con --force-ocr --deskew --output-type pdfa: rasteriza cada página
+y aplica OCR siempre, nunca deja páginas sin capa de texto, y produce PDF/A.
 
 El único caso en que NO se fuerza OCR es un PDF que ya tiene texto nativo bueno
 en todas sus páginas (modo SIN_OCR): forzarlo rasterizaría texto vectorial nítido
@@ -72,7 +65,16 @@ def convertir(
         # Solo se copia y se corrigen metadatos.
         shutil.copyfile(entrada, salida)
     else:
-        _ejecutar_ocr(entrada, salida, idioma_ocr, titulo, pdfa, progreso, cancelar)
+        try:
+            _ejecutar_ocr(entrada, salida, idioma_ocr, titulo, pdfa, progreso, cancelar)
+        except ConversionCancelada:
+            # Eliminar el archivo parcial para no dejar un PDF corrupto en disco.
+            if salida.exists():
+                try:
+                    salida.unlink()
+                except OSError:
+                    pass
+            raise
         if not salida.exists():
             raise ErrorConversion('El OCR no produjo el archivo de salida')
 

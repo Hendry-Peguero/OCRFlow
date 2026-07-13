@@ -3,6 +3,7 @@
 Ejecutar:  .venv\\Scripts\\python gui\\app.py
 """
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -393,49 +394,51 @@ class Convertidor(QThread):
 
     def run(self):
         ok = errores = 0
-        total = len(self.trabajos)
-        for i, (fila, ruta, diag) in enumerate(self.trabajos, 1):
-            if self._cancelado:
-                self.fila_lista.emit(fila, 'neutro', 'Cancelado (no iniciado)', '')
-                continue
-            self.archivo_inicia.emit(i, total, fila)
-            carpeta = Path(self.carpeta_salida) if self.carpeta_salida else ruta.parent
-            salida  = carpeta / (ruta.stem + SUFIJO_SALIDA + '.pdf')
+        try:
+            total = len(self.trabajos)
+            for i, (fila, ruta, diag) in enumerate(self.trabajos, 1):
+                if self._cancelado:
+                    self.fila_lista.emit(fila, 'neutro', 'Cancelado (no iniciado)', '')
+                    continue
+                self.archivo_inicia.emit(i, total, fila)
+                carpeta = Path(self.carpeta_salida) if self.carpeta_salida else ruta.parent
+                salida  = carpeta / (ruta.stem + SUFIJO_SALIDA + '.pdf')
 
-            def al_progresar(desc, frac, fila=fila):
-                etapa = ETAPAS.get(desc, desc or 'Procesando')
-                self.progreso_pagina.emit(fila, etapa, frac if frac is not None else -1.0)
+                def al_progresar(desc, frac, fila=fila):
+                    etapa = ETAPAS.get(desc, desc or 'Procesando')
+                    self.progreso_pagina.emit(fila, etapa, frac if frac is not None else -1.0)
 
-            try:
-                convertir(
-                    ruta, salida, diag,
-                    idioma_ocr=self.idioma_ocr,
-                    pdfa=self.pdfa,
-                    forzar=self.forzar,
-                    progreso=al_progresar,
-                    cancelar=lambda: self._cancelado,
-                )
-                res     = validar(salida)
-                detalle = _detalle_resultado(diag, res, salida)
-                if res.legible_por_lector:
-                    ok += 1
-                    self.fila_lista.emit(
-                        fila, 'ok',
-                        f'Accesible — legible {res.ratio_legible:.0%} → {salida.name}',
-                        detalle + f'\n@salida={salida}')
-                else:
+                try:
+                    convertir(
+                        ruta, salida, diag,
+                        idioma_ocr=self.idioma_ocr,
+                        pdfa=self.pdfa,
+                        forzar=self.forzar,
+                        progreso=al_progresar,
+                        cancelar=lambda: self._cancelado,
+                    )
+                    res     = validar(salida)
+                    detalle = _detalle_resultado(diag, res, salida)
+                    if res.legible_por_lector:
+                        ok += 1
+                        self.fila_lista.emit(
+                            fila, 'ok',
+                            f'Accesible — legible {res.ratio_legible:.0%} → {salida.name}',
+                            detalle + f'\n@salida={salida}')
+                    else:
+                        errores += 1
+                        self.fila_lista.emit(
+                            fila, 'aviso',
+                            f'Calidad baja (legible {res.ratio_legible:.0%})',
+                            detalle + '\nADVERTENCIA: revisar el escaneo original.'
+                            + f'\n@salida={salida}')
+                except ConversionCancelada:
+                    self.fila_lista.emit(fila, 'neutro', 'Cancelado por el usuario', '')
+                except Exception as e:
                     errores += 1
-                    self.fila_lista.emit(
-                        fila, 'aviso',
-                        f'Calidad baja (legible {res.ratio_legible:.0%})',
-                        detalle + '\nADVERTENCIA: revisar el escaneo original.'
-                        + f'\n@salida={salida}')
-            except ConversionCancelada:
-                self.fila_lista.emit(fila, 'neutro', 'Cancelado por el usuario', '')
-            except Exception as e:
-                errores += 1
-                self.fila_lista.emit(fila, 'error', f'ERROR: {str(e)[:150]}', str(e))
-        self.todo_listo.emit(ok, errores)
+                    self.fila_lista.emit(fila, 'error', f'ERROR: {str(e)[:150]}', str(e))
+        finally:
+            self.todo_listo.emit(ok, errores)
 
 
 def _detalle_resultado(diag: Diagnostico, res: Resultado, salida: Path) -> str:
@@ -874,7 +877,7 @@ class Ventana(QMainWindow):
         self._sync_stack()
         hilo = Analizador(nuevos)
         hilo.listo.connect(self.al_analizar)
-        hilo.finished.connect(lambda h=hilo: self._analizadores.remove(h))
+        hilo.finished.connect(self._cleanup_analizador)
         self._analizadores.append(hilo)
         hilo.start()
         self.barra.showMessage(f'Analizando {len(nuevos)} archivo(s)…')
@@ -1010,6 +1013,13 @@ class Ventana(QMainWindow):
             partes.append(f'{pendientes} cancelado(s)')
         self.barra.showMessage('Terminado: ' + ', '.join(partes) + '.')
 
+    def _cleanup_analizador(self):
+        hilo = self.sender()
+        try:
+            self._analizadores.remove(hilo)
+        except ValueError:
+            pass
+
     # ── Utilidades ────────────────────────────────────────────────────────────
     def _bloquear(self, ocupado: bool):
         for w in (self.btn_agregar, self.btn_carpeta,
@@ -1089,6 +1099,51 @@ class Ventana(QMainWindow):
         ev.accept()
 
 
+# ─── Verificación de dependencias del sistema ────────────────────────────────
+
+def _verificar_dependencias_externas(parent=None):
+    """Muestra un aviso si Tesseract o Ghostscript no están disponibles."""
+    faltantes = []
+
+    if not shutil.which('tesseract'):
+        # Comprobar ruta de instalación estándar en Windows
+        pf = os.environ.get('ProgramFiles', r'C:\Program Files')
+        if not Path(pf, 'Tesseract-OCR', 'tesseract.exe').exists():
+            faltantes.append(
+                'Tesseract OCR no encontrado.\n'
+                '  Descarga: https://github.com/UB-Mannheim/tesseract/releases\n'
+                '  Activa los idiomas Spanish y English durante la instalación.\n'
+                '  Marca "Add Tesseract to PATH" al instalar.'
+            )
+
+    gs_ok = shutil.which('gswin64c') or shutil.which('gswin32c') or shutil.which('gs')
+    if not gs_ok:
+        pf = os.environ.get('ProgramFiles', r'C:\Program Files')
+        gs_dir = Path(pf, 'gs')
+        if gs_dir.exists():
+            for sub in gs_dir.iterdir():
+                if (sub / 'bin' / 'gswin64c.exe').exists():
+                    gs_ok = True
+                    break
+        if not gs_ok:
+            faltantes.append(
+                'Ghostscript no encontrado.\n'
+                '  Descarga: https://www.ghostscript.com/releases/gsdnld.html\n'
+                '  Elige la versión Windows 64-bit.'
+            )
+
+    if faltantes:
+        dlg = QMessageBox(parent)
+        dlg.setWindowTitle('OCRFlow — Dependencias faltantes')
+        dlg.setIcon(QMessageBox.Warning)
+        dlg.setText(
+            'Las siguientes dependencias no están instaladas.\n'
+            'La conversión OCR no funcionará hasta que las instales:\n\n'
+            + '\n\n'.join(faltantes)
+        )
+        dlg.exec()
+
+
 # ─── Punto de entrada ─────────────────────────────────────────────────────────
 
 def main():
@@ -1101,10 +1156,16 @@ def main():
 
     ventana = Ventana()
     ventana.show()
+
+    _verificar_dependencias_externas(ventana)
+
     sys.exit(app.exec())
 
 
 if __name__ == '__main__':
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, IOError):
+        pass
     main()

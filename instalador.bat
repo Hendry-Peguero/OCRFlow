@@ -8,44 +8,66 @@ echo       OCRFlow -- Instalador de dependencias
 echo  =============================================================
 echo.
 
-rem -- 1. Verificar Python ----------------------------------------------
+rem -- 1. Verificar que Python existe ------------------------------------
 where python >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Python no encontrado en el PATH.
     echo.
-    echo  Descarga Python 3.13+ desde:
-    echo    https://www.python.org/downloads/
+    echo  Descarga Python 3.13 desde:
+    echo    https://www.python.org/downloads/release/python-3130/
     echo.
-    echo  IMPORTANTE: durante la instalacion marca la casilla
-    echo  "Add Python to PATH" antes de hacer clic en Install Now.
+    echo  IMPORTANTE: marca "Add Python to PATH" durante la instalacion.
     echo.
     pause
     exit /b 1
 )
 
-for /f "tokens=*" %%V in ('python --version 2^>^&1') do set PY_VER=%%V
-echo [OK] %PY_VER% detectado.
+rem -- 2. Detectar version y elegir el ejecutable correcto ---------------
+set USE_PY=python
 
-rem Advertir si la version es 3.14+ (PySide6 aun no tiene wheel para ella)
-for /f "tokens=2 delims=." %%M in ('python -c "import sys; print(sys.version)" 2^>^&1') do set PY_MINOR=%%M
-for /f "tokens=1 delims=." %%N in ('python -c "import sys; print(sys.version_info.major)" 2^>^&1') do set PY_MAJOR=%%N
-if "%PY_MAJOR%"=="3" if %PY_MINOR% GEQ 14 (
+python -c "import sys; exit(0 if sys.version_info >= (3,14) else 1)" >nul 2>&1
+if not errorlevel 1 (
+    echo [AVISO] Python 3.14+ detectado. PySide6 requiere Python 3.11-3.13.
+    echo  Buscando una version compatible...
     echo.
-    echo [AVISO] Python 3.14+ detectado.
-    echo  PySide6 puede no tener wheel disponible para esta version.
-    echo  Si la instalacion falla, instala Python 3.13 desde:
-    echo    https://www.python.org/downloads/release/python-3130/
-    echo  y ejecuta este instalador de nuevo.
-    echo.
+    py -3.13 --version >nul 2>&1
+    if not errorlevel 1 (
+        set USE_PY=py -3.13
+        echo [OK] Se usara Python 3.13 para el entorno virtual.
+    ) else (
+        py -3.12 --version >nul 2>&1
+        if not errorlevel 1 (
+            set USE_PY=py -3.12
+            echo [OK] Se usara Python 3.12 para el entorno virtual.
+        ) else (
+            py -3.11 --version >nul 2>&1
+            if not errorlevel 1 (
+                set USE_PY=py -3.11
+                echo [OK] Se usara Python 3.11 para el entorno virtual.
+            ) else (
+                echo [ERROR] No se encontro Python 3.11, 3.12 ni 3.13.
+                echo.
+                echo  Instala Python 3.13 desde:
+                echo    https://www.python.org/downloads/release/python-3130/
+                echo  Marca "Add Python to PATH" y vuelve a ejecutar este instalador.
+                echo.
+                pause
+                exit /b 1
+            )
+        )
+    )
+) else (
+    for /f "tokens=*" %%V in ('python --version 2^>^&1') do echo [OK] %%V detectado.
 )
 echo.
 
-rem -- 2. Crear entorno virtual ------------------------------------------
+rem -- 3. Crear entorno virtual ------------------------------------------
 if exist ".venv\Scripts\python.exe" (
     echo [OK] Entorno virtual ya existe, omitiendo creacion.
+    echo      Si hay problemas, elimina la carpeta .venv y ejecuta de nuevo.
 ) else (
     echo Creando entorno virtual en .venv\ ...
-    python -m venv .venv
+    %USE_PY% -m venv .venv
     if errorlevel 1 (
         echo.
         echo [ERROR] No se pudo crear el entorno virtual.
@@ -56,12 +78,12 @@ if exist ".venv\Scripts\python.exe" (
 )
 echo.
 
-rem -- 3. Actualizar pip -------------------------------------------------
+rem -- 4. Actualizar pip -------------------------------------------------
 echo Actualizando pip...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip -q
 echo.
 
-rem -- 4. Instalar dependencias Python -----------------------------------
+rem -- 5. Instalar dependencias ------------------------------------------
 echo Instalando dependencias Python (requirements.txt)...
 echo Esto puede tardar varios minutos la primera vez...
 echo.
@@ -69,15 +91,37 @@ echo.
 if errorlevel 1 (
     echo.
     echo [ERROR] Fallo al instalar dependencias.
-    echo Comprueba tu conexion a internet y vuelve a ejecutar este instalador.
+    echo.
+    echo  Posibles causas:
+    echo    - Sin conexion a internet.
+    echo    - Version de Python incompatible con PySide6.
+    echo.
+    echo  Solucion: elimina la carpeta .venv, instala Python 3.13 desde
+    echo    https://www.python.org/downloads/release/python-3130/
+    echo  y ejecuta este instalador de nuevo.
+    echo.
     pause
     exit /b 1
 )
-echo.
-echo [OK] Dependencias Python instaladas.
+
+rem -- 6. Confirmar que PySide6 importa correctamente --------------------
+".venv\Scripts\python.exe" -c "import PySide6" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo [ERROR] PySide6 no se instalo correctamente.
+    echo.
+    echo  La version de Python instalada puede no ser compatible.
+    echo  Instala Python 3.13 desde:
+    echo    https://www.python.org/downloads/release/python-3130/
+    echo  Luego elimina la carpeta .venv y ejecuta este instalador de nuevo.
+    echo.
+    pause
+    exit /b 1
+)
+echo [OK] Dependencias instaladas y verificadas.
 echo.
 
-rem -- 5. Verificar Tesseract OCR ----------------------------------------
+rem -- 7. Verificar Tesseract OCR ----------------------------------------
 echo -------------------------------------------------------------
 echo Verificando dependencias externas del sistema...
 echo.
@@ -98,15 +142,14 @@ if "%TESS_OK%"=="1" (
     echo [AVISO] Tesseract OCR no encontrado.
     echo.
     echo  La conversion OCR no funcionara sin Tesseract.
-    echo  Pasos para instalarlo:
-    echo    1. Descarga el instalador Windows 64-bit desde:
+    echo    1. Descarga Windows 64-bit desde:
     echo       https://github.com/UB-Mannheim/tesseract/releases
-    echo    2. Durante la instalacion activa los idiomas Spanish y English.
-    echo    3. Marca "Add Tesseract to PATH" o reinicia el equipo tras instalar.
+    echo    2. Activa los idiomas Spanish y English durante la instalacion.
+    echo    3. Marca "Add Tesseract to PATH" o reinicia tras instalar.
     echo.
 )
 
-rem -- 6. Verificar Ghostscript ------------------------------------------
+rem -- 8. Verificar Ghostscript ------------------------------------------
 set GS_OK=0
 where gswin64c >nul 2>&1
 if not errorlevel 1 set GS_OK=1
@@ -125,7 +168,7 @@ if "%GS_OK%"=="1" (
     echo [AVISO] Ghostscript no encontrado.
     echo.
     echo  La generacion de PDF/A no funcionara sin Ghostscript.
-    echo  Descarga la version Windows 64-bit desde:
+    echo  Descarga Windows 64-bit desde:
     echo    https://www.ghostscript.com/releases/gsdnld.html
     echo.
 )

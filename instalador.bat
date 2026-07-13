@@ -1,15 +1,14 @@
 @echo off
 setlocal enabledelayedexpansion
-chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 
 echo.
-echo  ╔═══════════════════════════════════════════════════════════╗
-echo  ║           OCRFlow — Instalador de dependencias            ║
-echo  ╚═══════════════════════════════════════════════════════════╝
+echo  =============================================================
+echo       OCRFlow -- Instalador de dependencias
+echo  =============================================================
 echo.
 
-rem ── 1. Verificar Python ──────────────────────────────────────────────────────
+rem -- 1. Verificar Python ----------------------------------------------
 where python >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Python no encontrado en el PATH.
@@ -28,7 +27,7 @@ for /f "tokens=*" %%V in ('python --version 2^>^&1') do set PY_VER=%%V
 echo [OK] %PY_VER% detectado.
 echo.
 
-rem ── 2. Crear entorno virtual ──────────────────────────────────────────────────
+rem -- 2. Crear entorno virtual ------------------------------------------
 if exist ".venv\Scripts\python.exe" (
     echo [OK] Entorno virtual ya existe, omitiendo creacion.
 ) else (
@@ -44,12 +43,12 @@ if exist ".venv\Scripts\python.exe" (
 )
 echo.
 
-rem ── 3. Actualizar pip ─────────────────────────────────────────────────────────
+rem -- 3. Actualizar pip -------------------------------------------------
 echo Actualizando pip...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip -q
 echo.
 
-rem ── 4. Instalar dependencias Python ──────────────────────────────────────────
+rem -- 4. Instalar dependencias Python -----------------------------------
 echo Instalando dependencias Python (requirements.txt)...
 echo Esto puede tardar varios minutos la primera vez...
 echo.
@@ -65,15 +64,14 @@ echo.
 echo [OK] Dependencias Python instaladas.
 echo.
 
-rem ── 5. Verificar Tesseract OCR ────────────────────────────────────────────────
-echo ─────────────────────────────────────────────────────────────
+rem -- 5. Verificar Tesseract OCR ----------------------------------------
+echo -------------------------------------------------------------
 echo Verificando dependencias externas del sistema...
 echo.
 
 set TESS_OK=0
 where tesseract >nul 2>&1
 if not errorlevel 1 set TESS_OK=1
-
 if "%TESS_OK%"=="0" (
     if exist "C:\Program Files\Tesseract-OCR\tesseract.exe" set TESS_OK=1
 )
@@ -90,13 +88,12 @@ if "%TESS_OK%"=="1" (
     echo  Pasos para instalarlo:
     echo    1. Descarga el instalador Windows 64-bit desde:
     echo       https://github.com/UB-Mannheim/tesseract/releases
-    echo       ^(archivo: tesseract-ocr-w64-setup-X.X.X.exe^)
     echo    2. Durante la instalacion activa los idiomas Spanish y English.
-    echo    3. Marca la opcion "Add Tesseract to PATH" o reinicia el equipo.
+    echo    3. Marca "Add Tesseract to PATH" o reinicia el equipo tras instalar.
     echo.
 )
 
-rem ── 6. Verificar Ghostscript ──────────────────────────────────────────────────
+rem -- 6. Verificar Ghostscript ------------------------------------------
 set GS_OK=0
 where gswin64c >nul 2>&1
 if not errorlevel 1 set GS_OK=1
@@ -121,11 +118,11 @@ if "%GS_OK%"=="1" (
 )
 
 echo.
-echo ═════════════════════════════════════════════════════════════
-echo  OCRFlow instalado correctamente.
+echo  =============================================================
+echo   OCRFlow instalado correctamente.
 echo.
-echo  Para iniciar la aplicacion haz doble clic en:
-echo     ejecutame.bat
-echo ═════════════════════════════════════════════════════════════
+echo   Para iniciar la aplicacion haz doble clic en:
+echo      ejecutame.bat
+echo  =============================================================
 echo.
 pause

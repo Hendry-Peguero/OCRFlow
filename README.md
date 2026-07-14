@@ -2,7 +2,7 @@
 
 Windows desktop application that converts scanned or unreadable PDFs into **screen-reader accessible documents** (Windows Narrator, NVDA, JAWS) using an invisible OCR text layer and accessibility metadata.
 
-![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![PySide6](https://img.shields.io/badge/PySide6-Qt6-41CD52?logo=qt&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -28,19 +28,21 @@ Windows desktop application that converts scanned or unreadable PDFs into **scre
 | GUI | PySide6 (Qt 6) |
 | OCR Engine | OCRmyPDF + Tesseract 5 |
 | PDF Manipulation | pikepdf · pypdf · pdfplumber |
-| Language | Python 3.13 |
+| Language | Python 3.11+ |
 
 ---
 
 ## Prerequisites
 
-Install these once before running OCRFlow:
+Install these **before** running `instalador.bat`. Bundled installers are included in the `installer/` folder.
 
-| Requirement | Download | Notes |
+| Requirement | Bundled Installer | Notes |
 |---|---|---|
-| Python 3.13+ | [python.org](https://www.python.org/downloads/) | Check **"Add Python to PATH"** during setup |
-| Tesseract OCR 5.x | [UB-Mannheim releases](https://github.com/UB-Mannheim/tesseract/releases) | Enable **Spanish** and **English** language packs |
-| Ghostscript 10.x | [ghostscript.com](https://www.ghostscript.com/releases/gsdnld.html) | Choose Windows 64-bit |
+| Python 3.11+ | [python.org](https://www.python.org/downloads/) | Check **"Add Python to PATH"** during setup |
+| Tesseract OCR 5.x | `installer\tesseract-ocr-w64-setup-*.exe` | Enable **Spanish** language pack · check **"Add to PATH"** |
+| Ghostscript 10.x | `installer\gs10071w64.exe` | Install with default options |
+
+> After installing Tesseract and Ghostscript, **restart any open command windows** so the PATH is refreshed.
 
 ---
 
@@ -51,20 +53,44 @@ git clone https://github.com/Hendry-Peguero/OCRFlow.git
 cd OCRFlow
 ```
 
-Then double-click **`instalador.bat`**.
+**Step 1 — Install system dependencies (once):**
 
-It will:
+1. Run `installer\tesseract-ocr-w64-setup-*.exe`
+   - On the components screen, expand **"Additional language data"** and check **Spanish**
+   - Check **"Add to PATH"**
+2. Run `installer\gs10071w64.exe` — accept defaults
+
+**Step 2 — Install Python dependencies:**
+
+Double-click **`instalador.bat`**. It will:
 - Create a Python virtual environment (`.venv/`)
-- Install all dependencies from `requirements.txt`
-- Verify that Tesseract and Ghostscript are available and print download links if they're missing
+- Install all packages from `requirements.txt`
+- Confirm that Tesseract and Ghostscript are detected in PATH
 
 ---
 
 ## Running the App
 
-Double-click **`ejecutame.bat`** — opens the GUI with no console window.
+Double-click **`OCRFlow.vbs`** — opens the GUI with no console window.
+
+Alternatively, double-click **`ejecutame.bat`** — same result, also checks dependencies before launching.
 
 > If the virtual environment is missing, the launcher will prompt you to run `instalador.bat` first.
+
+---
+
+## Troubleshooting
+
+If the app does not open, run **`debug_launch.bat`** — it keeps the console open and writes errors to `crash_log.txt`.
+
+Common issues:
+
+| Symptom | Fix |
+|---|---|
+| `Tesseract not found` | Install from `installer\tesseract-ocr-w64-setup-*.exe`, restart cmd |
+| `Ghostscript not found` | Install from `installer\gs10071w64.exe`, restart cmd |
+| `ModuleNotFoundError: PySide6` | Delete `.venv\` and re-run `instalador.bat` |
+| App launches but window doesn't appear | Check taskbar — it may be minimized or behind other windows |
 
 ---
 
@@ -111,17 +137,25 @@ Double-click **`ejecutame.bat`** — opens the GUI with no console window.
 ```
 OCRFlow/
 ├── gui/
-│   └── app.py           # PySide6 GUI — main window, QThread workers
+│   └── app.py                    # PySide6 GUI — main window, QThread workers
 ├── core/
-│   ├── analyzer.py      # PDF diagnosis and classification
-│   ├── converter.py     # OCR + PDF/A conversion pipeline
-│   ├── validator.py     # Output quality measurement
-│   └── config.py        # Shared constants
+│   ├── analyzer.py               # PDF diagnosis and classification
+│   ├── converter.py              # OCR + PDF/A conversion pipeline
+│   ├── validator.py              # Output quality measurement
+│   ├── progreso.py               # Progress reporting utilities
+│   └── config.py                 # Shared constants
+├── installer/
+│   ├── tesseract-ocr-w64-setup-*.exe   # Tesseract 5 installer (Windows 64-bit)
+│   └── gs10071w64.exe            # Ghostscript 10.07.1 installer (Windows 64-bit)
 ├── tests/
-│   └── crear_pdf_prueba.py  # Generates a test scanned PDF
-├── cli.py               # Command-line interface
-├── instalador.bat       # One-click dependency installer
-└── ejecutame.bat        # One-click app launcher
+│   ├── crear_pdf_prueba.py       # Generates a test scanned PDF
+│   ├── probar_diagnostico.py     # Tests the analyzer
+│   └── probar_progreso.py        # Tests progress reporting
+├── cli.py                        # Command-line interface
+├── OCRFlow.vbs                   # Recommended one-click launcher (no console)
+├── ejecutame.bat                 # Alternative launcher with dependency checks
+├── instalador.bat                # One-click Python dependency installer
+└── debug_launch.bat              # Diagnostic launcher — keeps console open
 ```
 
 ---

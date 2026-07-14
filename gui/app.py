@@ -1148,12 +1148,17 @@ def _verificar_dependencias_externas(parent=None):
 
 def _forzar_foco(ventana):
     """Fuerza la ventana al frente usando Win32 cuando Qt no es suficiente."""
+    ventana.setWindowFlag(Qt.WindowStaysOnTopHint, False)
+    ventana.show()
     ventana.raise_()
     ventana.activateWindow()
     try:
         import ctypes
         hwnd = int(ventana.winId())
-        ctypes.windll.user32.SetForegroundWindow(hwnd)
+        sw = ctypes.windll.user32.ShowWindow
+        sfw = ctypes.windll.user32.SetForegroundWindow
+        sw(hwnd, 9)   # SW_RESTORE
+        sfw(hwnd)
     except Exception:
         pass
 
@@ -1167,10 +1172,11 @@ def main():
     app.setStyleSheet(STYLESHEET)
 
     ventana = Ventana()
+    ventana.setWindowFlag(Qt.WindowStaysOnTopHint, True)
     ventana.show()
 
     from PySide6.QtCore import QTimer
-    QTimer.singleShot(150, lambda: _forzar_foco(ventana))
+    QTimer.singleShot(200, lambda: _forzar_foco(ventana))
 
     _verificar_dependencias_externas(ventana)
 

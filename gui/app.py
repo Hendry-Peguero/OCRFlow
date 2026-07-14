@@ -1146,6 +1146,18 @@ def _verificar_dependencias_externas(parent=None):
 
 # ─── Punto de entrada ─────────────────────────────────────────────────────────
 
+def _forzar_foco(ventana):
+    """Fuerza la ventana al frente usando Win32 cuando Qt no es suficiente."""
+    ventana.raise_()
+    ventana.activateWindow()
+    try:
+        import ctypes
+        hwnd = int(ventana.winId())
+        ctypes.windll.user32.SetForegroundWindow(hwnd)
+    except Exception:
+        pass
+
+
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName('OCRFlow')
@@ -1156,8 +1168,9 @@ def main():
 
     ventana = Ventana()
     ventana.show()
-    ventana.raise_()
-    ventana.activateWindow()
+
+    from PySide6.QtCore import QTimer
+    QTimer.singleShot(150, lambda: _forzar_foco(ventana))
 
     _verificar_dependencias_externas(ventana)
 

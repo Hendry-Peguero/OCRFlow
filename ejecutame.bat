@@ -30,4 +30,4 @@ if errorlevel 1 (
 )
 
 rem -- 3. Lanzar la aplicacion -------------------------------------------
-start "" "%~dp0.venv\Scripts\pythonw.exe" "%~dp0gui\app.py"
+start "OCRFlow" /NORMAL "%~dp0.venv\Scripts\pythonw.exe" "%~dp0gui\app.py"

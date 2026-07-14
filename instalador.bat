@@ -13,8 +13,8 @@ where python >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Python no encontrado en el PATH.
     echo.
-    echo  Descarga Python 3.13 desde:
-    echo    https://www.python.org/downloads/release/python-3130/
+    echo  Descarga Python desde:
+    echo    https://www.python.org/downloads/
     echo.
     echo  IMPORTANTE: marca "Add Python to PATH" durante la instalacion.
     echo.
@@ -22,43 +22,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem -- 2. Detectar version y elegir el ejecutable correcto ---------------
+rem -- 2. Verificar version minima (3.11+) ------------------------------
 set USE_PY=python
 
-python -c "import sys; exit(0 if sys.version_info >= (3,14) else 1)" >nul 2>&1
-if not errorlevel 1 (
-    echo [AVISO] Python 3.14+ detectado. PySide6 requiere Python 3.11-3.13.
-    echo  Buscando una version compatible...
+python -c "import sys; exit(0 if sys.version_info >= (3,11) else 1)" >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Se requiere Python 3.11 o superior.
     echo.
-    py -3.13 --version >nul 2>&1
-    if not errorlevel 1 (
-        set USE_PY=py -3.13
-        echo [OK] Se usara Python 3.13 para el entorno virtual.
-    ) else (
-        py -3.12 --version >nul 2>&1
-        if not errorlevel 1 (
-            set USE_PY=py -3.12
-            echo [OK] Se usara Python 3.12 para el entorno virtual.
-        ) else (
-            py -3.11 --version >nul 2>&1
-            if not errorlevel 1 (
-                set USE_PY=py -3.11
-                echo [OK] Se usara Python 3.11 para el entorno virtual.
-            ) else (
-                echo [ERROR] No se encontro Python 3.11, 3.12 ni 3.13.
-                echo.
-                echo  Instala Python 3.13 desde:
-                echo    https://www.python.org/downloads/release/python-3130/
-                echo  Marca "Add Python to PATH" y vuelve a ejecutar este instalador.
-                echo.
-                pause
-                exit /b 1
-            )
-        )
-    )
-) else (
-    for /f "tokens=*" %%V in ('python --version 2^>^&1') do echo [OK] %%V detectado.
+    echo  Descarga la ultima version desde:
+    echo    https://www.python.org/downloads/
+    echo  Marca "Add Python to PATH" durante la instalacion.
+    echo.
+    pause
+    exit /b 1
 )
+
+for /f "tokens=*" %%V in ('python --version 2^>^&1') do echo [OK] %%V detectado.
 echo.
 
 rem -- 3. Crear entorno virtual ------------------------------------------
@@ -96,8 +75,8 @@ if errorlevel 1 (
     echo    - Sin conexion a internet.
     echo    - Version de Python incompatible con PySide6.
     echo.
-    echo  Solucion: elimina la carpeta .venv, instala Python 3.13 desde
-    echo    https://www.python.org/downloads/release/python-3130/
+    echo  Solucion: elimina la carpeta .venv, instala la ultima version de
+    echo  Python desde https://www.python.org/downloads/
     echo  y ejecuta este instalador de nuevo.
     echo.
     pause

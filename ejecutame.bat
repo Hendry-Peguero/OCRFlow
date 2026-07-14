@@ -21,7 +21,7 @@ if errorlevel 1 (
     echo.
     echo  PySide6 no se pudo importar. Posibles causas:
     echo    - La instalacion fallo o quedo incompleta.
-    echo    - La version de Python no es compatible (se requiere 3.11 a 3.13).
+    echo    - La version de Python no es compatible (se requiere 3.11 o superior).
     echo.
     echo  Solucion: elimina la carpeta .venv y ejecuta instalador.bat de nuevo.
     echo.

@@ -1156,6 +1156,8 @@ def main():
 
     ventana = Ventana()
     ventana.show()
+    ventana.raise_()
+    ventana.activateWindow()
 
     _verificar_dependencias_externas(ventana)
 

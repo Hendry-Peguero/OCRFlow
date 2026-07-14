@@ -27,3 +27,8 @@ tests/salida2/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Debug / crash logs
+crash_log.txt
+crash.log
+crash_stderr.log

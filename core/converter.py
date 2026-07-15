@@ -108,7 +108,8 @@ def _ejecutar_ocr(entrada, salida, idioma_ocr, titulo, pdfa, progreso, cancelar)
     except Exception as e:
         if _fue_cancelacion(e):
             raise ConversionCancelada() from e
-        raise ErrorConversion(f'Fallo del OCR: {str(e)[:200]}') from e
+        msg = str(e).strip() or f'{type(e).__module__}.{type(e).__name__}'
+        raise ErrorConversion(f'Fallo del OCR: {msg[:300]}') from e
     finally:
         _progreso.limpiar()
 

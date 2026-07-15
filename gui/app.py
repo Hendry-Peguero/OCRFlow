@@ -4,10 +4,25 @@ Ejecutar:  .venv\\Scripts\\python gui\\app.py
 """
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# ── Suprimir ventanas CMD en Windows ─────────────────────────────────────────
+# ocrmypdf llama a tesseract y ghostscript via subprocess sin CREATE_NO_WINDOW;
+# en apps GUI (pythonw.exe) eso abre ventanas CMD visibles. El parche siguiente
+# añade CREATE_NO_WINDOW a TODOS los subprocesos del proceso.
+if sys.platform == 'win32':
+    _CREATE_NO_WINDOW = 0x08000000
+    _Popen_orig = subprocess.Popen.__init__
+
+    def _Popen_sin_ventana(self, args, **kwargs):
+        kwargs.setdefault('creationflags', _CREATE_NO_WINDOW)
+        _Popen_orig(self, args, **kwargs)
+
+    subprocess.Popen.__init__ = _Popen_sin_ventana
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QAction, QColor, QFont
@@ -28,9 +43,41 @@ from core.validator import Resultado, validar
 COL_ARCHIVO, COL_PAGINAS, COL_DIAG, COL_ESTADO = 0, 1, 2, 3
 
 IDIOMAS_OCR = [
-    ('Español + Inglés', 'spa+eng'),
-    ('Solo español',     'spa'),
-    ('Solo inglés',      'eng'),
+    # Combinaciones
+    ('Español + Inglés',             'spa+eng'),
+    ('Español + Inglés + Francés',   'spa+eng+fra'),
+    ('Español + Inglés + Portugués', 'spa+eng+por'),
+    # Europeos
+    ('Solo español',                 'spa'),
+    ('Solo inglés',                  'eng'),
+    ('Francés',                      'fra'),
+    ('Portugués',                    'por'),
+    ('Alemán',                       'deu'),
+    ('Italiano',                     'ita'),
+    ('Neerlandés',                   'nld'),
+    ('Polaco',                       'pol'),
+    ('Ruso',                         'rus'),
+    ('Catalán',                      'cat'),
+    ('Checo',                        'ces'),
+    ('Sueco',                        'swe'),
+    ('Danés',                        'dan'),
+    ('Noruego',                      'nor'),
+    ('Finés',                        'fin'),
+    ('Rumano',                       'ron'),
+    ('Húngaro',                      'hun'),
+    ('Turco',                        'tur'),
+    ('Ucraniano',                    'ukr'),
+    # Asiáticos / Otros
+    ('Árabe',                        'ara'),
+    ('Chino simplificado',           'chi_sim'),
+    ('Chino tradicional',            'chi_tra'),
+    ('Japonés',                      'jpn'),
+    ('Coreano',                      'kor'),
+    ('Hindi',                        'hin'),
+    ('Vietnamita',                   'vie'),
+    ('Indonesio',                    'ind'),
+    ('Tailandés',                    'tha'),
+    ('Hebreo',                       'heb'),
 ]
 
 ETAPAS = {
@@ -374,6 +421,30 @@ class Analizador(QThread):
             self.listo.emit(fila, diag)
 
 
+class InstaladorIdiomas(QThread):
+    """Descarga e instala paquetes de idioma de Tesseract en segundo plano."""
+
+    progreso  = Signal(str, object)  # (descripcion, fraccion 0-1 | None)
+    terminado = Signal(bool, str)    # (exito, mensaje_error)
+
+    def __init__(self, codigos: list[str]):
+        super().__init__()
+        self.codigos = codigos
+
+    def run(self):
+        from core import tesseract_langs as tl
+        for codigo in self.codigos:
+            try:
+                tl.instalar_idioma(
+                    codigo,
+                    progreso=lambda desc, frac: self.progreso.emit(desc, frac),
+                )
+            except Exception as e:
+                self.terminado.emit(False, str(e))
+                return
+        self.terminado.emit(True, '')
+
+
 class Convertidor(QThread):
     archivo_inicia  = Signal(int, int, int)
     progreso_pagina = Signal(int, str, float)
@@ -505,9 +576,10 @@ class Ventana(QMainWindow):
         self.setMinimumSize(860, 560)
         self.setAcceptDrops(True)
 
-        self.trabajos: list[dict]            = []
-        self.hilo: Convertidor | None        = None
-        self._analizadores: list[Analizador] = []
+        self.trabajos: list[dict]                = []
+        self.hilo: Convertidor | None            = None
+        self._instalador: InstaladorIdiomas | None = None
+        self._analizadores: list[Analizador]     = []
 
         self._crear_menu()
         self._construir_ui()
@@ -941,6 +1013,74 @@ class Ventana(QMainWindow):
                 'Los PDFs marcados como "ya accesibles" se omiten.\n'
                 'Activa "Forzar OCR" para procesarlos igualmente.')
             return
+
+        # ── Verificar idiomas de Tesseract antes de convertir ──────────────
+        idioma_ocr = self.combo_idioma.currentData()
+        from core import tesseract_langs as tl
+        faltantes = tl.idiomas_faltantes(idioma_ocr)
+        if faltantes:
+            lista = '\n'.join(f'  •  {c}' for c in faltantes)
+            resp = QMessageBox.question(
+                self, 'OCRFlow — Idiomas de Tesseract faltantes',
+                f'Los siguientes paquetes de idioma no están instalados en Tesseract:\n\n'
+                f'{lista}\n\n'
+                f'¿Descargarlos e instalarlos ahora?\n'
+                f'(Puede solicitarse permiso de administrador si el directorio\n'
+                f'de Tesseract está protegido)',
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if resp != QMessageBox.Yes:
+                return
+            self._instalar_y_convertir(faltantes, cola, idioma_ocr, forzar)
+            return
+
+        self._iniciar_conversion(cola, idioma_ocr, forzar)
+
+    def _instalar_y_convertir(self, faltantes, cola, idioma_ocr, forzar):
+        """Instala los idiomas faltantes y, al terminar, inicia la conversión."""
+        self._bloquear(True)
+        self._status_pill.setObjectName('statusPillBusy')
+        self._status_pill.setText('● Instalando idiomas…')
+        self._status_pill.style().unpolish(self._status_pill)
+        self._status_pill.style().polish(self._status_pill)
+        self.progreso.setRange(0, 0)  # barra indeterminada mientras descarga
+        self.barra.showMessage(
+            f'Descargando paquetes de idioma de Tesseract: {", ".join(faltantes)}…'
+        )
+        self._instalador = InstaladorIdiomas(faltantes)
+        self._instalador.progreso.connect(self._al_progreso_instalacion)
+        self._instalador.terminado.connect(
+            lambda ok, err: self._al_terminar_instalacion(ok, err, cola, idioma_ocr, forzar)
+        )
+        self._instalador.start()
+
+    def _al_progreso_instalacion(self, desc: str, frac):
+        self.barra.showMessage(desc)
+        if frac is not None:
+            self.progreso.setRange(0, 1000)
+            self.progreso.setValue(int(frac * 1000))
+        else:
+            self.progreso.setRange(0, 0)
+
+    def _al_terminar_instalacion(self, ok: bool, error_msg: str, cola, idioma_ocr, forzar):
+        self.progreso.setRange(0, 1000)
+        self.progreso.setValue(0)
+        if not ok:
+            self._bloquear(False)
+            self._status_pill.setObjectName('statusPill')
+            self._status_pill.setText('● Listo')
+            self._status_pill.style().unpolish(self._status_pill)
+            self._status_pill.style().polish(self._status_pill)
+            QMessageBox.critical(
+                self, 'OCRFlow — Error de instalación',
+                f'No se pudieron instalar los paquetes de idioma:\n\n{error_msg}'
+            )
+            return
+        self.barra.showMessage('Idiomas instalados correctamente. Iniciando conversión…')
+        self._iniciar_conversion(cola, idioma_ocr, forzar)
+
+    def _iniciar_conversion(self, cola, idioma_ocr, forzar):
+        """Crea y arranca el hilo Convertidor."""
         self._bloquear(True)
         self._status_pill.setObjectName('statusPillBusy')
         self._status_pill.setText('● Procesando…')
@@ -949,7 +1089,7 @@ class Ventana(QMainWindow):
         self.hilo = Convertidor(
             cola,
             self.campo_salida.text().strip(),
-            self.combo_idioma.currentData(),
+            idioma_ocr,
             self.check_pdfa.isChecked(),
             forzar,
         )
@@ -1087,6 +1227,15 @@ class Ventana(QMainWindow):
             'El archivo original nunca se modifica.')
 
     def closeEvent(self, ev):
+        if self._instalador and self._instalador.isRunning():
+            resp = QMessageBox.question(
+                self, 'OCRFlow',
+                'Se está descargando un idioma de Tesseract. ¿Cancelar y salir?')
+            if resp != QMessageBox.Yes:
+                ev.ignore()
+                return
+            self._instalador.terminate()
+            self._instalador.wait(5000)
         if self.hilo and self.hilo.isRunning():
             resp = QMessageBox.question(
                 self, 'OCRFlow',
@@ -1164,6 +1313,10 @@ def _forzar_foco(ventana):
 
 
 def main():
+    # Corregir TESSDATA_PREFIX inválido antes de cualquier llamada a OCR
+    from core import tesseract_langs as _tl
+    _tl.inicializar()
+
     app = QApplication(sys.argv)
     app.setApplicationName('OCRFlow')
 

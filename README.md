@@ -1,6 +1,6 @@
 # OCRFlow
 
-Windows desktop application that converts scanned or unreadable PDFs into **screen-reader accessible documents** (Windows Narrator, NVDA, JAWS) using an invisible OCR text layer and accessibility metadata.
+Aplicación de escritorio para Windows que convierte PDFs escaneados o ilegibles en **documentos accesibles para lectores de pantalla** (Narrador de Windows, NVDA, JAWS) mediante una capa invisible de texto OCR y metadatos de accesibilidad.
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![PySide6](https://img.shields.io/badge/PySide6-Qt6-41CD52?logo=qt&logoColor=white)
@@ -9,173 +9,190 @@ Windows desktop application that converts scanned or unreadable PDFs into **scre
 
 ---
 
-## Features
+## Características
 
-- Drag-and-drop PDF queue with batch processing
-- Automatic diagnosis — detects scanned, defective, or already-accessible PDFs
-- Invisible OCR text layer via Tesseract 5
-- PDF/A output for long-term archiving
-- Document language and metadata tagging (`/Lang`, title, `DisplayDocTitle`)
-- Per-page progress tracking with cancelable conversions
-- Full keyboard navigation and screen-reader compatible UI
+- Cola de PDFs con arrastrar y soltar — procesamiento en lote
+- Diagnóstico automático: detecta PDFs escaneados, con OCR corrupto o ya accesibles
+- Capa de texto OCR invisible vía Tesseract 5
+- **31 idiomas de OCR disponibles**: español, inglés, francés, portugués, alemán, árabe, chino, japonés, coreano, hindi y más
+- **Auto-instalación de idiomas faltantes**: si el idioma seleccionado no está instalado en Tesseract, la app lo descarga e instala automáticamente antes de convertir (solicita permisos de administrador si es necesario)
+- Salida PDF/A para archivado a largo plazo
+- Etiquetado de idioma y metadatos del documento (`/Lang`, título, `DisplayDocTitle`)
+- Seguimiento de progreso por página con conversiones cancelables
+- Interfaz completamente navegable por teclado y compatible con lectores de pantalla
+- Sin ventanas CMD visibles durante la conversión
 
 ---
 
-## Tech Stack
+## Stack tecnológico
 
-| Layer | Technology |
+| Capa | Tecnología |
 |---|---|
 | GUI | PySide6 (Qt 6) |
-| OCR Engine | OCRmyPDF + Tesseract 5 |
-| PDF Manipulation | pikepdf · pypdf · pdfplumber |
-| Language | Python 3.11+ |
+| Motor OCR | OCRmyPDF + Tesseract 5 |
+| Manipulación PDF | pikepdf · pypdf · pdfplumber |
+| Lenguaje | Python 3.11+ |
 
 ---
 
-## Prerequisites
+## Requisitos previos
 
-Install these **before** running `instalador.bat`. Bundled installers are included in the `installer/` folder.
+Instala estas dependencias **antes** de ejecutar `instalador.bat`. Los instaladores están incluidos en la carpeta `installer/`.
 
-| Requirement | Bundled Installer | Notes |
+| Requisito | Instalador incluido | Notas |
 |---|---|---|
-| Python 3.11+ | [python.org](https://www.python.org/downloads/) | Check **"Add Python to PATH"** during setup |
-| Tesseract OCR 5.x | `installer\tesseract-ocr-w64-setup-*.exe` | Enable **Spanish** language pack · check **"Add to PATH"** |
-| Ghostscript 10.x | `installer\gs10071w64.exe` | Install with default options |
+| Python 3.11+ | [python.org](https://www.python.org/downloads/) | Marca **"Add Python to PATH"** durante la instalación |
+| Tesseract OCR 5.x | `installer\tesseract-ocr-w64-setup-*.exe` | Activa el idioma **Spanish** · marca **"Add to PATH"** |
+| Ghostscript 10.x | `installer\gs10071w64.exe` | Instalar con las opciones por defecto |
 
-> After installing Tesseract and Ghostscript, **restart any open command windows** so the PATH is refreshed.
+> Tras instalar Tesseract y Ghostscript, **reinicia cualquier ventana de comandos abierta** para que el PATH se actualice.
 
 ---
 
-## Installation
+## Instalación
 
 ```bash
 git clone https://github.com/Hendry-Peguero/OCRFlow.git
 cd OCRFlow
 ```
 
-**Step 1 — Install system dependencies (once):**
+**Paso 1 — Instalar dependencias del sistema (una sola vez):**
 
-1. Run `installer\tesseract-ocr-w64-setup-*.exe`
-   - On the components screen, expand **"Additional language data"** and check **Spanish**
-   - Check **"Add to PATH"**
-2. Run `installer\gs10071w64.exe` — accept defaults
+1. Ejecutar `installer\tesseract-ocr-w64-setup-*.exe`
+   - En la pantalla de componentes, expandir **"Additional language data"** y marcar **Spanish**
+   - Marcar **"Add to PATH"**
+2. Ejecutar `installer\gs10071w64.exe` — aceptar las opciones por defecto
 
-**Step 2 — Install Python dependencies:**
+**Paso 2 — Instalar dependencias Python:**
 
-Double-click **`instalador.bat`**. It will:
-- Create a Python virtual environment (`.venv/`)
-- Install all packages from `requirements.txt`
-- Confirm that Tesseract and Ghostscript are detected in PATH
-
----
-
-## Running the App
-
-Double-click **`OCRFlow.vbs`** — opens the GUI with no console window.
-
-Alternatively, double-click **`ejecutame.bat`** — same result, also checks dependencies before launching.
-
-> If the virtual environment is missing, the launcher will prompt you to run `instalador.bat` first.
+Doble clic en **`instalador.bat`**. Se encargará de:
+- Crear un entorno virtual Python (`.venv/`)
+- Instalar todos los paquetes de `requirements.txt`
+- Confirmar que Tesseract y Ghostscript están detectados en PATH
 
 ---
 
-## Troubleshooting
+## Ejecutar la aplicación
 
-If the app does not open, run **`debug_launch.bat`** — it keeps the console open and writes errors to `crash_log.txt`.
+Doble clic en **`PDF Accesible.bat`** — abre la GUI sin ventana de consola.
 
-Common issues:
+Alternativamente, doble clic en **`OCRFlow.vbs`** o **`ejecutame.bat`**.
 
-| Symptom | Fix |
-|---|---|
-| `Tesseract not found` | Install from `installer\tesseract-ocr-w64-setup-*.exe`, restart cmd |
-| `Ghostscript not found` | Install from `installer\gs10071w64.exe`, restart cmd |
-| `ModuleNotFoundError: PySide6` | Delete `.venv\` and re-run `instalador.bat` |
-| App launches but window doesn't appear | Check taskbar — it may be minimized or behind other windows |
+> Si falta el entorno virtual, el lanzador pedirá ejecutar `instalador.bat` primero.
 
 ---
 
-## CLI Usage
+## Uso
+
+### Interfaz gráfica
+
+1. Arrastrar PDFs a la ventana o usar **+ Agregar PDFs** (`Ctrl+O`)
+2. Seleccionar idioma OCR en el combo — si el idioma no está instalado, la app lo descargará automáticamente
+3. Elegir carpeta de salida (por defecto: junto al archivo original)
+4. Clic en **Convertir F5**
+
+### CLI
 
 ```bash
-# Convert a single file
-.venv\Scripts\python cli.py document.pdf
+# Convertir un archivo
+.venv\Scripts\python cli.py documento.pdf
 
-# Batch convert a folder
-.venv\Scripts\python cli.py folder\ -o output\
+# Convertir una carpeta completa
+.venv\Scripts\python cli.py carpeta\ -o salida\
 
-# Analyze only — no conversion
-.venv\Scripts\python cli.py document.pdf --diagnostico
+# Solo analizar, sin convertir
+.venv\Scripts\python cli.py documento.pdf --diagnostico
 
-# Force OCR even if the PDF already has text
-.venv\Scripts\python cli.py document.pdf --forzar
+# Forzar OCR aunque el PDF ya tenga texto
+.venv\Scripts\python cli.py documento.pdf --forzar
 
-# Set output format and document title
-.venv\Scripts\python cli.py document.pdf --pdfa --titulo "Annual Report 2025"
+# Especificar idioma OCR
+.venv\Scripts\python cli.py documento.pdf --idioma fra+eng
 
-# Disable PDF/A output
-.venv\Scripts\python cli.py document.pdf --sin-pdfa
+# Sin formato PDF/A
+.venv\Scripts\python cli.py documento.pdf --sin-pdfa
 ```
 
 ---
 
-## How It Works
+## Cómo funciona
 
-1. **Analysis** (`core/analyzer.py`) — classifies the PDF: no text (scanned), garbage text (corrupted OCR), mixed, or already accessible. Detection is based on character density per page, not just whether "the page has some text."
+1. **Análisis** (`core/analyzer.py`) — clasifica el PDF: sin texto (escaneado), texto basura (OCR corrupto), mixto o ya accesible. La detección se basa en densidad de caracteres por página, no simplemente en si "la página tiene algo de texto".
 
-2. **Conversion** (`core/converter.py`) — runs `ocrmypdf --force-ocr --deskew --output-type pdfa`. PDFs with good native text are passed through with metadata only — re-running OCR on clean text would degrade quality. Use **Force OCR** to override.
+2. **Verificación de idiomas** (`core/tesseract_langs.py`) — antes de convertir, comprueba si los idiomas seleccionados están instalados en Tesseract. Si faltan, los descarga del repositorio oficial (`.traineddata`) e instala automáticamente. Si el directorio de Tesseract requiere permisos de administrador, solicita elevación UAC.
 
-3. **Metadata** — sets `/Lang`, document title and `DisplayDocTitle` — what the screen reader announces when opening the document.
+3. **Conversión** (`core/converter.py`) — ejecuta `ocrmypdf --force-ocr --deskew --output-type pdfa`. Los PDFs con texto nativo bueno se procesan solo con corrección de metadatos — volver a hacer OCR en texto limpio degradaría la calidad. Usar **Forzar OCR** para anular esto.
 
-4. **Validation** (`core/validator.py`) — measures the output using the same character-density criteria as step 1 and reports a before/after comparison.
+4. **Metadatos** — establece `/Lang`, título del documento y `DisplayDocTitle` — lo que el lector de pantalla anuncia al abrir el documento.
 
-> The original file is **never modified**.
+5. **Validación** (`core/validator.py`) — mide el resultado con los mismos criterios de densidad de caracteres que el paso 1 y reporta una comparación antes/después.
+
+> El archivo original **nunca se modifica**.
 
 ---
 
-## Project Structure
+## Estructura del proyecto
 
 ```
 OCRFlow/
 ├── gui/
-│   └── app.py                    # PySide6 GUI — main window, QThread workers
+│   └── app.py                    # GUI PySide6 — ventana principal, workers QThread
 ├── core/
-│   ├── analyzer.py               # PDF diagnosis and classification
-│   ├── converter.py              # OCR + PDF/A conversion pipeline
-│   ├── validator.py              # Output quality measurement
-│   ├── progreso.py               # Progress reporting utilities
-│   └── config.py                 # Shared constants
+│   ├── analyzer.py               # Diagnóstico y clasificación del PDF
+│   ├── converter.py              # Pipeline de conversión OCR + PDF/A
+│   ├── validator.py              # Medición de calidad del resultado
+│   ├── tesseract_langs.py        # Gestión de idiomas Tesseract: detección,
+│   │                             #   descarga e instalación automática
+│   ├── progreso.py               # Plugin de progreso para OCRmyPDF
+│   └── config.py                 # Constantes compartidas
 ├── installer/
-│   ├── tesseract-ocr-w64-setup-*.exe   # Tesseract 5 installer (Windows 64-bit)
-│   └── gs10071w64.exe            # Ghostscript 10.07.1 installer (Windows 64-bit)
+│   ├── tesseract-ocr-w64-setup-*.exe   # Instalador Tesseract 5 (Windows 64-bit)
+│   └── gs10071w64.exe            # Instalador Ghostscript 10.07.1 (Windows 64-bit)
 ├── tests/
-│   ├── crear_pdf_prueba.py       # Generates a test scanned PDF
-│   ├── probar_diagnostico.py     # Tests the analyzer
-│   └── probar_progreso.py        # Tests progress reporting
-├── cli.py                        # Command-line interface
-├── OCRFlow.vbs                   # Recommended one-click launcher (no console)
-├── ejecutame.bat                 # Alternative launcher with dependency checks
-├── instalador.bat                # One-click Python dependency installer
-└── debug_launch.bat              # Diagnostic launcher — keeps console open
+│   ├── crear_pdf_prueba.py       # Genera un PDF de prueba escaneado
+│   ├── probar_diagnostico.py     # Prueba el analizador
+│   └── probar_progreso.py        # Prueba el reporte de progreso
+├── cli.py                        # Interfaz de línea de comandos
+├── PDF Accesible.bat             # Lanzador principal (sin consola)
+├── OCRFlow.vbs                   # Lanzador alternativo (sin consola)
+├── ejecutame.bat                 # Lanzador con verificación de dependencias
+├── instalador.bat                # Instalador de dependencias Python
+└── debug_launch.bat              # Lanzador de diagnóstico — mantiene consola abierta
 ```
 
 ---
 
-## Quick Test
+## Resolución de problemas
+
+Si la aplicación no abre, ejecutar **`debug_launch.bat`** — mantiene la consola abierta y escribe errores en `crash_log.txt`.
+
+| Síntoma | Solución |
+|---|---|
+| `Tesseract not found` | Instalar desde `installer\tesseract-ocr-w64-setup-*.exe`, reiniciar cmd |
+| `Ghostscript not found` | Instalar desde `installer\gs10071w64.exe`, reiniciar cmd |
+| `ModuleNotFoundError: PySide6` | Eliminar `.venv\` y volver a ejecutar `instalador.bat` |
+| Idioma OCR no instalado | La app lo descarga automáticamente al convertir. Si falla, ejecutar como administrador |
+| `Fallo del OCR` en el log | Verificar que Tesseract y Ghostscript estén en PATH; ejecutar `debug_launch.bat` |
+| Ventana no aparece | Revisar la barra de tareas — puede estar minimizada o detrás de otras ventanas |
+
+---
+
+## Prueba rápida
 
 ```bash
-# Generate a fake scanned PDF with no text layer
+# Generar un PDF falso escaneado sin capa de texto
 .venv\Scripts\python tests\crear_pdf_prueba.py
 
-# Convert it
+# Convertirlo
 .venv\Scripts\python cli.py tests\prueba_escaneada.pdf -o tests\salida
 ```
 
 ---
 
-## License
+## Licencia
 
-MIT — see [LICENSE](LICENSE)
+MIT — ver [LICENSE](LICENSE)
 
 ---
 
-*Built by [Hendry Peguero](https://github.com/Hendry-Peguero)*
+*Desarrollado por [Hendry Peguero](https://github.com/Hendry-Peguero)*

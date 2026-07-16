@@ -24,21 +24,25 @@ _CREATE_NO_WINDOW = 0x08000000  # flag de Windows para no abrir ventana CMD
 # ── Inicialización ──────────────────────────────────────────────────────────────
 
 def inicializar() -> None:
-    """Corrige TESSDATA_PREFIX si apunta a una ruta inexistente.
+    """Corrige el entorno para que Tesseract funcione aunque no esté en PATH.
 
     Debe llamarse una vez al arrancar la app, antes de cualquier llamada a OCR.
-    TESSDATA_PREFIX malo causa que tesseract devuelva exit-code 1 en el paso de
-    deskew, lo que hace que ocrmypdf lance SubprocessOutputError.
+    Resuelve dos problemas comunes en instalaciones silenciosas:
+    1. TESSDATA_PREFIX malo → tesseract devuelve exit-code 1 en deskew.
+    2. Tesseract instalado pero no en PATH → ocrmypdf no encuentra el ejecutable.
     """
+    # ── Fix 1: TESSDATA_PREFIX inválido ──────────────────────────────────────
     prefix = os.environ.get('TESSDATA_PREFIX', '')
-    if not prefix:
-        return
-    if Path(prefix).is_dir():
-        return  # apunta a un dir válido, no tocar
+    if prefix and not Path(prefix).is_dir():
+        del os.environ['TESSDATA_PREFIX']
 
-    # El TESSDATA_PREFIX actual no existe: eliminarlo para que tesseract
-    # use su ruta compilada por defecto (junto al ejecutable)
-    del os.environ['TESSDATA_PREFIX']
+    # ── Fix 2: Tesseract instalado pero no en PATH ───────────────────────────
+    # ocrmypdf llama a 'tesseract' por nombre como subproceso; si no está en
+    # PATH la conversión falla aunque el exe exista en disco.
+    if not shutil.which('tesseract'):
+        tess = encontrar_tesseract()
+        if tess:
+            os.environ['PATH'] = str(tess.parent) + os.pathsep + os.environ.get('PATH', '')
 
 
 # ── Localización ────────────────────────────────────────────────────────────────
